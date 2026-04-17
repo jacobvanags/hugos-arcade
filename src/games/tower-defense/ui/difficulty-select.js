@@ -8,9 +8,10 @@ import { drawText, roundedRect, fillBackground } from '../../../shared/canvas-ut
 import { DIFFICULTY_DEFS, CHALLENGE_DEFS } from '../data/tower-defs.js';
 
 const CARD_W = 220;
-const CARD_H_BASE = 160;
-const CHALLENGE_ROW_H = 28;
-const GAP = 24;
+const CARD_H_BASE = 180;
+const CHALLENGE_ROW_H = 32;
+const GAP = 40;
+const PLAY_BTN_H = 36;
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
 /** Get challenges that belong to a given difficulty tier. */
@@ -145,18 +146,18 @@ export function renderDifficultySelect(ctx, mapDef, hoveredIndex, progress = {},
       });
     }
 
-    // Play button
-    const btnY = pos.y + CARD_H_BASE - 32;
+    // Play button — large, prominent so it's the obvious tap target.
+    const btnY = pos.y + CARD_H_BASE - PLAY_BTN_H - 8;
     const btnW = CARD_W - 40;
     const btnX = pos.x + 20;
-    roundedRect(ctx, btnX, btnY, btnW, 24, 4,
-      hovered ? `rgba(${hexToRgb(def.color)},0.15)` : 'rgba(255,255,255,0.04)',
-      hovered ? `rgba(${hexToRgb(def.color)},0.4)` : 'rgba(255,255,255,0.1)',
-      1
+    roundedRect(ctx, btnX, btnY, btnW, PLAY_BTN_H, 6,
+      hovered ? `rgba(${hexToRgb(def.color)},0.22)` : `rgba(${hexToRgb(def.color)},0.08)`,
+      hovered ? `rgba(${hexToRgb(def.color)},0.6)` : `rgba(${hexToRgb(def.color)},0.3)`,
+      hovered ? 2 : 1.5
     );
-    drawText(ctx, isCompleted ? '▶ PLAY AGAIN' : '▶ PLAY', btnX + btnW / 2, btnY + 12, {
-      color: hovered ? def.color : '#8892b0',
-      font: 'bold 11px monospace',
+    drawText(ctx, isCompleted ? '▶  PLAY AGAIN' : '▶  PLAY', btnX + btnW / 2, btnY + PLAY_BTN_H / 2, {
+      color: hovered ? '#ffffff' : def.color,
+      font: 'bold 14px monospace',
       align: 'center',
       baseline: 'middle',
     });
@@ -211,12 +212,17 @@ export function renderDifficultySelect(ctx, mapDef, hoveredIndex, progress = {},
     }
   }
 
-  // Back button
+  // Back button — proper tappable pill, not just a text link.
   const maxCardBottom = Math.max(...positions.map((p, i) => p.y + positions[i].h));
   const backY = maxCardBottom + 30;
-  drawText(ctx, '← Back to Map Select', cx, backY, {
-    color: '#6a7490',
-    font: '12px monospace',
+  const backW = 220;
+  const backH = 36;
+  const backX = cx - backW / 2;
+  roundedRect(ctx, backX, backY - backH / 2, backW, backH, 6,
+    'rgba(255,255,255,0.04)', 'rgba(255,255,255,0.12)', 1);
+  drawText(ctx, '←  Back to Map Select', cx, backY, {
+    color: '#aab0c0',
+    font: 'bold 12px monospace',
     align: 'center',
     baseline: 'middle',
   });
@@ -299,10 +305,10 @@ export function handleDifficultyClick(x, y, progress) {
     }
   }
 
-  // Back button
+  // Back button — hit-test matches the pill we render (220×36 centered).
   const maxCardBottom = Math.max(...positions.map((p, i) => p.y + positions[i].h));
   const backY = maxCardBottom + 30;
-  if (x >= cx - 120 && x <= cx + 120 && y >= backY - 12 && y <= backY + 12) {
+  if (x >= cx - 110 && x <= cx + 110 && y >= backY - 18 && y <= backY + 18) {
     return 'back';
   }
 

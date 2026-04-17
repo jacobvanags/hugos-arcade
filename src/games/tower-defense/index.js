@@ -644,31 +644,38 @@ export class Game {
     }
 
     // --- Tooltip hover detection ---
+    // Always clear first. Only populate if the user is actively "hovering":
+    // desktop = always; touch = only during a long-press peek. This prevents
+    // tooltips from getting stuck at the last tap location on iPad, and
+    // gives Hugo a way to inspect towers/enemies without committing to a
+    // click (hold finger 400ms to peek, lift to dismiss — no selection fires).
     gs.tooltip = null;
 
-    // 1. Sidebar tower button hover
-    const hoveredBtn = getHoveredTowerButton(mx, my);
-    if (hoveredBtn) {
-      const lines = buildTowerButtonTooltip(hoveredBtn);
-      if (lines) gs.tooltip = { x: mx, y: my, lines };
-    }
-
-    // 2. Placed tower hover (game area)
-    if (!gs.tooltip && gs.hoveredCell) {
-      const { col, row } = gs.hoveredCell;
-      const ht = gs.towers.find(t => t.col === col && t.row === row);
-      if (ht) {
-        const lines = buildPlacedTowerTooltip(ht);
+    if (this.input.isHovering()) {
+      // 1. Sidebar tower button hover
+      const hoveredBtn = getHoveredTowerButton(mx, my);
+      if (hoveredBtn) {
+        const lines = buildTowerButtonTooltip(hoveredBtn);
         if (lines) gs.tooltip = { x: mx, y: my, lines };
       }
-    }
 
-    // 3. Enemy hover (game area)
-    if (!gs.tooltip && mx < config.gameArea.w && my > config.gridOffsetY) {
-      const he = getHoveredEnemy(mx, my, gs.enemies);
-      if (he) {
-        const lines = buildEnemyTooltip(he);
-        if (lines) gs.tooltip = { x: mx, y: my, lines };
+      // 2. Placed tower hover (game area)
+      if (!gs.tooltip && gs.hoveredCell) {
+        const { col, row } = gs.hoveredCell;
+        const ht = gs.towers.find(t => t.col === col && t.row === row);
+        if (ht) {
+          const lines = buildPlacedTowerTooltip(ht);
+          if (lines) gs.tooltip = { x: mx, y: my, lines };
+        }
+      }
+
+      // 3. Enemy hover (game area)
+      if (!gs.tooltip && mx < config.gameArea.w && my > config.gridOffsetY) {
+        const he = getHoveredEnemy(mx, my, gs.enemies);
+        if (he) {
+          const lines = buildEnemyTooltip(he);
+          if (lines) gs.tooltip = { x: mx, y: my, lines };
+        }
       }
     }
 

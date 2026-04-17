@@ -187,38 +187,41 @@ export function renderGameOver(ctx, gs) {
   }
 
   // --- Navigation Buttons ---
-  const btnW = 140;
-  const btnH = 36;
-  const totalBtnW = btnW * 3 + 20;
+  // Larger & bolder than the mouse-era defaults so a kid on iPad immediately
+  // sees them as the tap targets, not decorative labels.
+  const btnW = 170;
+  const btnH = 52;
+  const btnGap = 16;
+  const totalBtnW = btnW * 3 + btnGap * 2;
   const startX = cx - totalBtnW / 2;
-  const btnY = challengeY + 4;
+  const btnY = challengeY + 8;
 
-  // Play Again
-  roundedRect(ctx, startX, btnY, btnW, btnH, 6,
-    'rgba(0,212,255,0.15)', 'rgba(0,212,255,0.3)', 1);
-  drawText(ctx, 'Play Again', startX + btnW / 2, btnY + btnH / 2, {
-    color: '#00d4ff',
-    font: 'bold 13px monospace',
+  // Play Again — primary action, brightest.
+  roundedRect(ctx, startX, btnY, btnW, btnH, 8,
+    'rgba(0,212,255,0.28)', 'rgba(0,212,255,0.75)', 2);
+  drawText(ctx, '▶  Play Again', startX + btnW / 2, btnY + btnH / 2, {
+    color: '#ffffff',
+    font: 'bold 16px monospace',
     align: 'center',
     baseline: 'middle',
   });
 
   // Map Select
-  roundedRect(ctx, startX + btnW + 10, btnY, btnW, btnH, 6,
-    'rgba(255,215,0,0.1)', 'rgba(255,215,0,0.25)', 1);
-  drawText(ctx, 'Map Select', startX + btnW + 10 + btnW / 2, btnY + btnH / 2, {
+  roundedRect(ctx, startX + btnW + btnGap, btnY, btnW, btnH, 8,
+    'rgba(255,215,0,0.18)', 'rgba(255,215,0,0.55)', 2);
+  drawText(ctx, '◈  Map Select', startX + btnW + btnGap + btnW / 2, btnY + btnH / 2, {
     color: '#ffd700',
-    font: 'bold 13px monospace',
+    font: 'bold 16px monospace',
     align: 'center',
     baseline: 'middle',
   });
 
-  // Exit
-  roundedRect(ctx, startX + (btnW + 10) * 2, btnY, btnW, btnH, 6,
-    'rgba(255,68,68,0.1)', 'rgba(255,68,68,0.2)', 1);
-  drawText(ctx, 'Exit to Menu', startX + (btnW + 10) * 2 + btnW / 2, btnY + btnH / 2, {
-    color: '#ff4444',
-    font: 'bold 13px monospace',
+  // Exit — destructive-ish, more muted.
+  roundedRect(ctx, startX + (btnW + btnGap) * 2, btnY, btnW, btnH, 8,
+    'rgba(255,68,68,0.15)', 'rgba(255,68,68,0.45)', 2);
+  drawText(ctx, '✕  Exit to Menu', startX + (btnW + btnGap) * 2 + btnW / 2, btnY + btnH / 2, {
+    color: '#ff7777',
+    font: 'bold 16px monospace',
     align: 'center',
     baseline: 'middle',
   });
@@ -233,11 +236,12 @@ export function renderGameOver(ctx, gs) {
  */
 export function handleGameOverClick(x, y, gs) {
   const cx = config.width / 2;
-  const btnW = 140;
-  const btnH = 36;
+  const btnW = 170;
+  const btnH = 52;
+  const btnGap = 16;
   const btnY = gs._gameOverBtnY || (config.height / 2 + 80);
 
-  const totalBtnW = btnW * 3 + 20;
+  const totalBtnW = btnW * 3 + btnGap * 2;
   const startX = cx - totalBtnW / 2;
 
   // Play Again
@@ -246,12 +250,12 @@ export function handleGameOverClick(x, y, gs) {
   }
 
   // Map Select
-  if (x >= startX + btnW + 10 && x <= startX + btnW * 2 + 10 && y >= btnY && y <= btnY + btnH) {
+  if (x >= startX + btnW + btnGap && x <= startX + btnW * 2 + btnGap && y >= btnY && y <= btnY + btnH) {
     return 'mapSelect';
   }
 
   // Exit
-  if (x >= startX + (btnW + 10) * 2 && x <= startX + (btnW + 10) * 2 + btnW && y >= btnY && y <= btnY + btnH) {
+  if (x >= startX + (btnW + btnGap) * 2 && x <= startX + (btnW + btnGap) * 2 + btnW && y >= btnY && y <= btnY + btnH) {
     return 'exit';
   }
 

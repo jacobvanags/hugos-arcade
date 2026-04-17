@@ -26,11 +26,15 @@ export function createInputManager(target = window) {
     startX: 0,
     startY: 0,
     lastY: 0,
-    scrolling: false, // true once displacement > TAP_THRESHOLD — no click on release
+    scrolling: false,     // true once displacement > TAP_THRESHOLD — no click on release
+    longPressing: false,  // true after LONG_PRESS_MS of holding still — acts as "hover"
+    longPressTimer: null,
   };
   // Max displacement (in CSS pixels) before a touch is classified as a drag/scroll.
   // 10px matches iOS's own tap-vs-scroll heuristic closely enough for kids.
   const TAP_THRESHOLD = 10;
+  // Hold duration that triggers "hover peek" mode. Matches iOS long-press feel.
+  const LONG_PRESS_MS = 400;
   let enabled = true;
 
   function onKeyDown(e) {
@@ -110,6 +114,7 @@ export function createInputManager(target = window) {
     touch.active = true;
     touch.id = t.identifier;
     touch.scrolling = false;
+    touch.longPressing = false;
     touch.startX = t.clientX;
     touch.startY = t.clientY;
     touch.lastY = t.clientY;
@@ -123,6 +128,17 @@ export function createInputManager(target = window) {
     // the user meant to scroll, causing accidental tower placement / button
     // presses every time a kid drags the sidebar.
     mouse.down = true;
+    // Schedule long-press detection. If the finger stays still for
+    // LONG_PRESS_MS, we enter "hover peek" mode — tooltips show without
+    // firing a click on release. This gives touch users parity with
+    // mouse hover (e.g. inspecting a tower before buying).
+    if (touch.longPressTimer) clearTimeout(touch.longPressTimer);
+    touch.longPressTimer = setTimeout(() => {
+      if (touch.id !== null && !touch.scrolling) {
+        touch.longPressing = true;
+      }
+      touch.longPressTimer = null;
+    }, LONG_PRESS_MS);
     if (e.cancelable) e.preventDefault();
   }
 
@@ -141,6 +157,12 @@ export function createInputManager(target = window) {
           const dy = t.clientY - touch.startY;
           if (Math.hypot(dx, dy) > TAP_THRESHOLD) {
             touch.scrolling = true;
+            // Moving finger cancels the long-press — user is scrolling/dragging,
+            // not holding still to peek.
+            if (touch.longPressTimer) {
+              clearTimeout(touch.longPressTimer);
+              touch.longPressTimer = null;
+            }
           }
         }
         if (touch.scrolling) {
@@ -160,15 +182,21 @@ export function createInputManager(target = window) {
     if (!enabled || touch.id === null) return;
     for (const t of e.changedTouches) {
       if (t.identifier === touch.id) {
-        // Fire a click only if this was a genuine tap (never crossed scroll
-        // threshold). Otherwise the user was scrolling and does NOT want a
-        // click on whatever happened to be under the finger at tap-start.
-        if (!touch.scrolling) {
+        if (touch.longPressTimer) {
+          clearTimeout(touch.longPressTimer);
+          touch.longPressTimer = null;
+        }
+        // Fire a click only for a genuine tap — not when scrolling (finger
+        // moved) or long-pressing (finger held to peek). Both of those should
+        // release silently so the user can inspect / scroll without also
+        // selecting whatever was under the finger.
+        if (!touch.scrolling && !touch.longPressing) {
           mouse.clicked = true;
         }
         touch.id = null;
         touch.active = false;
         touch.scrolling = false;
+        touch.longPressing = false;
         mouse.down = false;
         if (e.cancelable) e.preventDefault();
         break;
@@ -187,6 +215,12 @@ export function createInputManager(target = window) {
     mouse.wheelDeltaY = 0;
     touch.id = null;
     touch.active = false;
+    touch.scrolling = false;
+    touch.longPressing = false;
+    if (touch.longPressTimer) {
+      clearTimeout(touch.longPressTimer);
+      touch.longPressTimer = null;
+    }
   }
 
   /** When canvas loses focus, release all keys so nothing is stuck */
@@ -253,6 +287,19 @@ export function createInputManager(target = window) {
      */
     isTouchActive() {
       return touch.active;
+    },
+
+    /**
+     * Whether the cursor is currently "hovering" — i.e. tooltip/hover logic
+     * should run. On desktop this is always true (mouse is always somewhere).
+     * On touch, only true during a long-press, so tooltips appear when the
+     * user deliberately holds a finger on something to peek, and clear
+     * immediately on release.
+     * @returns {boolean}
+     */
+    isHovering() {
+      if (touch.active) return touch.longPressing;
+      return true;
     },
 
     /**
