@@ -6,7 +6,8 @@ export default function GameCard({ game, onPlay }) {
   const canvasRef = useRef(null);
   const isComingSoon = game.manifest.comingSoon;
 
-  // Generate thumbnail on canvas
+  // Generate thumbnail on canvas — per-game art so each card hints at its
+  // actual gameplay instead of using a generic placeholder.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -16,33 +17,15 @@ export default function GameCard({ game, onPlay }) {
     canvas.width = w;
     canvas.height = h;
 
-    // Background gradient
-    const grad = ctx.createLinearGradient(0, 0, w, h);
     if (isComingSoon) {
-      grad.addColorStop(0, '#1a1a2e');
-      grad.addColorStop(1, '#0f0f1a');
+      drawComingSoonThumb(ctx, w, h);
+    } else if (game.manifest.id === 'tower-defense') {
+      drawTowerDefenseThumb(ctx, w, h);
+    } else if (game.manifest.id === 'cheese-run') {
+      drawCheeseRunThumb(ctx, w, h);
     } else {
-      grad.addColorStop(0, '#16213e');
-      grad.addColorStop(1, '#0a0a1a');
+      drawGenericThumb(ctx, w, h, game.manifest.title.charAt(0));
     }
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Decorative elements
-    ctx.strokeStyle = isComingSoon ? 'rgba(255,255,255,0.03)' : 'rgba(0,212,255,0.08)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 8; i++) {
-      ctx.beginPath();
-      ctx.arc(w / 2, h / 2, 20 + i * 15, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    // Center icon
-    ctx.font = 'bold 40px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isComingSoon ? 'rgba(255,255,255,0.1)' : 'rgba(0,212,255,0.3)';
-    ctx.fillText(isComingSoon ? '?' : game.manifest.title.charAt(0), w / 2, h / 2);
   }, [game, isComingSoon]);
 
   return (
@@ -224,3 +207,212 @@ const styles = {
     width: 'calc(100% - 40px)',
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────
+// Thumbnail art — procedural canvas drawing per game.
+// Keeps card rendering self-contained and avoids shipping image assets.
+// ─────────────────────────────────────────────────────────────────────
+
+function drawComingSoonThumb(ctx, w, h) {
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#1a1a2e');
+  grad.addColorStop(1, '#0f0f1a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, 20 + i * 15, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.font = 'bold 40px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.fillText('?', w / 2, h / 2);
+}
+
+function drawGenericThumb(ctx, w, h, letter) {
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#16213e');
+  grad.addColorStop(1, '#0a0a1a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.font = 'bold 40px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(0,212,255,0.3)';
+  ctx.fillText(letter, w / 2, h / 2);
+}
+
+/** Robot Defense: grid battlefield, winding enemy path, tower silhouettes. */
+function drawTowerDefenseThumb(ctx, w, h) {
+  // Deep space background
+  const grad = ctx.createRadialGradient(w * 0.3, h * 0.3, 20, w / 2, h / 2, w);
+  grad.addColorStop(0, '#1a2845');
+  grad.addColorStop(1, '#05060d');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Faint hex-grid / cell pattern
+  const tile = 20;
+  ctx.strokeStyle = 'rgba(0,212,255,0.08)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= w; x += tile) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 0; y <= h; y += tile) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  // Enemy path — winding curve from left edge to right
+  ctx.strokeStyle = 'rgba(0,212,255,0.35)';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.75);
+  ctx.bezierCurveTo(w * 0.3, h * 0.2, w * 0.55, h * 0.95, w, h * 0.35);
+  ctx.stroke();
+
+  // Path glow
+  ctx.strokeStyle = 'rgba(0,212,255,0.1)';
+  ctx.lineWidth = 14;
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.75);
+  ctx.bezierCurveTo(w * 0.3, h * 0.2, w * 0.55, h * 0.95, w, h * 0.35);
+  ctx.stroke();
+
+  // A few towers dotted around the path (colored circles on bases)
+  const towers = [
+    { x: w * 0.22, y: h * 0.62, color: '#ffd700' }, // gold — blaster
+    { x: w * 0.45, y: h * 0.3,  color: '#e94560' }, // red — missile
+    { x: w * 0.68, y: h * 0.72, color: '#44ffaa' }, // green — support
+    { x: w * 0.82, y: h * 0.25, color: '#ff8844' }, // orange — plasma
+  ];
+  for (const t of towers) {
+    // base
+    ctx.fillStyle = 'rgba(20,30,50,0.9)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(t.x, t.y, 12, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    // turret
+    ctx.fillStyle = t.color;
+    ctx.beginPath(); ctx.arc(t.x, t.y, 6, 0, Math.PI * 2); ctx.fill();
+    // range ring hint
+    ctx.strokeStyle = t.color + '33';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(t.x, t.y, 26, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // A small wave of enemies approaching on the path (red dots)
+  const enemies = [
+    { x: w * 0.08, y: h * 0.68 },
+    { x: w * 0.14, y: h * 0.55 },
+    { x: w * 0.19, y: h * 0.46 },
+  ];
+  for (const e of enemies) {
+    ctx.fillStyle = '#ff4444';
+    ctx.beginPath(); ctx.arc(e.x, e.y, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,68,68,0.25)';
+    ctx.beginPath(); ctx.arc(e.x, e.y, 7, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+/** Cheese Run: platforms, cheese wedge, mouse silhouette. */
+function drawCheeseRunThumb(ctx, w, h) {
+  // Warm night-sky background
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#2a1a3e');
+  grad.addColorStop(1, '#0f0a1a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Sparse stars
+  ctx.fillStyle = 'rgba(255,220,150,0.5)';
+  const stars = [[30, 28], [78, 18], [140, 40], [210, 22], [260, 52], [290, 15]];
+  for (const [x, y] of stars) {
+    ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Moon
+  ctx.fillStyle = 'rgba(255,220,150,0.15)';
+  ctx.beginPath(); ctx.arc(w - 50, 40, 18, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,220,150,0.35)';
+  ctx.beginPath(); ctx.arc(w - 50, 40, 10, 0, Math.PI * 2); ctx.fill();
+
+  // Platforms — stacked brick-style levels
+  const platforms = [
+    { x: 0,   y: h - 22, w: 110, color: '#3a2a22' },
+    { x: 140, y: h - 60, w: 90,  color: '#3a2a22' },
+    { x: 250, y: h - 32, w: 70,  color: '#3a2a22' },
+    { x: 60,  y: h - 100, w: 70,  color: '#3a2a22' },
+    { x: 190, y: h - 120, w: 90,  color: '#3a2a22' },
+  ];
+  for (const p of platforms) {
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, p.w, 14);
+    // top highlight
+    ctx.fillStyle = 'rgba(255,200,120,0.25)';
+    ctx.fillRect(p.x, p.y, p.w, 2);
+    // brick seams
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    for (let x = p.x + 12; x < p.x + p.w; x += 18) {
+      ctx.beginPath(); ctx.moveTo(x, p.y + 2); ctx.lineTo(x, p.y + 14); ctx.stroke();
+    }
+  }
+
+  // Golden cheese wedge up on the top platform
+  const cx = 225, cy = h - 124;
+  ctx.fillStyle = '#ffcf3a';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + 28, cy);
+  ctx.lineTo(cx + 14, cy - 16);
+  ctx.closePath();
+  ctx.fill();
+  // cheese highlight
+  ctx.fillStyle = '#fff3a0';
+  ctx.beginPath();
+  ctx.moveTo(cx + 2, cy - 1);
+  ctx.lineTo(cx + 14, cy - 14);
+  ctx.lineTo(cx + 8, cy - 1);
+  ctx.closePath();
+  ctx.fill();
+  // cheese holes
+  ctx.fillStyle = '#b8891a';
+  ctx.beginPath(); ctx.arc(cx + 12, cy - 3, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 19, cy - 6, 1.2, 0, Math.PI * 2); ctx.fill();
+
+  // Mouse on the lowest platform (simple grey body + pink ear + tail)
+  const mx = 28, my = h - 30;
+  ctx.fillStyle = '#c8c8d0';
+  // body
+  ctx.beginPath(); ctx.ellipse(mx, my, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // head
+  ctx.beginPath(); ctx.arc(mx + 8, my - 2, 5, 0, Math.PI * 2); ctx.fill();
+  // ear
+  ctx.fillStyle = '#f8a8c0';
+  ctx.beginPath(); ctx.arc(mx + 6, my - 6, 2.5, 0, Math.PI * 2); ctx.fill();
+  // eye
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(mx + 10, my - 2, 0.8, 0, Math.PI * 2); ctx.fill();
+  // tail
+  ctx.strokeStyle = '#c8c8d0';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(mx - 8, my);
+  ctx.quadraticCurveTo(mx - 16, my - 4, mx - 18, my + 2);
+  ctx.stroke();
+  // tiny gun (straight line pointing right)
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(mx + 12, my - 1);
+  ctx.lineTo(mx + 18, my - 1);
+  ctx.stroke();
+}
