@@ -3,12 +3,29 @@ import { Game, manifest, achievements } from './index.js';
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import { useAchievements } from '../../context/AchievementContext.jsx';
 import { resumeAudio, playSFX, getMasterVolume, getSFXVolume, getMusicVolume } from '../../shared/audio-engine.js';
+import TouchControls from '../../components/TouchControls.jsx';
+
+// Tower Defense already has canvas-rendered buttons for nearly everything
+// (tower picker, upgrade paths, speed controls, send-wave, etc.). Those now
+// work on iPad via the mouse-from-touch synthesis in input-manager.
+// The only keyboard-only actions that need on-screen buttons are Pause and
+// Back/Deselect, which are pinned to the top-right where they don't overlap
+// the sidebar tower panel.
+const TD_TOUCH_LAYOUT = [
+  { code: 'KeyP', label: '⏸', ariaLabel: 'Pause',
+    position: { top: 16, right: 88 }, size: 56, fontSize: 22, shape: 'square' },
+  { code: 'Escape', label: '✕', ariaLabel: 'Back / Deselect',
+    position: { top: 16, right: 20 }, size: 56, fontSize: 22, shape: 'square' },
+];
 
 export default function GameCanvas({ onExit }) {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
   const animFrameRef = useRef(null);
   const lastTimeRef = useRef(null);
+  // Ref so TouchControls can inject virtual key presses (pause, escape) once
+  // the game has initialized its input manager.
+  const inputRef = useRef(null);
 
   const { player, settings, submitScore, getHighScores, incrementPlayTime, incrementGamesPlayed, saveGameProgress, loadGameProgress } = usePlayer();
   const { unlock, isUnlocked, getAllAchievements, registerAchievements, unregisterAchievements } = useAchievements();
@@ -75,6 +92,7 @@ export default function GameCanvas({ onExit }) {
     const game = new Game();
     gameRef.current = game;
     game.init(canvas, arcadeAPI);
+    inputRef.current = game.input;
     incrementGamesPlayed();
 
     let playTimeAccum = 0;
@@ -130,6 +148,7 @@ export default function GameCanvas({ onExit }) {
           maxHeight: '100%',
         }}
       />
+      <TouchControls inputRef={inputRef} layout={TD_TOUCH_LAYOUT} />
     </div>
   );
 }
