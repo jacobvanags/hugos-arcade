@@ -1,19 +1,16 @@
 /**
  * Game Registry — central import point for all games in the arcade.
  * To add a new game:
- *   1. Copy src/games/game-template/ to src/games/your-game-name/
- *   2. Modify the manifest, config, and game logic
- *   3. Import and add it to the games array below
- *   4. The game will automatically appear in the launcher
+ *   1. Create src/games/your-game-name/ with an index.js exporting manifest + Game
+ *   2. Import and add it to the games array below
+ *   3. The game will automatically appear in the launcher
  */
 
-import * as GameTemplate from './game-template/index.js';
 import * as TowerDefense from './tower-defense/index.js';
 import * as CheeseRun from './cheese-run/index.js';
 
 /** All registered games */
 export const games = [
-  GameTemplate,
   TowerDefense,
   CheeseRun,
 ];

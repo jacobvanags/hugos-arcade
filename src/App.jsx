@@ -11,13 +11,11 @@ import Settings from './pages/Settings';
 import ProfileSelect from './pages/ProfileSelect';
 
 // Lazy load game canvases
-const GameTemplate = lazy(() => import('./games/game-template/GameCanvas'));
 const TowerDefense = lazy(() => import('./games/tower-defense/GameCanvas'));
 const CheeseRun = lazy(() => import('./games/cheese-run/GameCanvas'));
 
 /** Map of game IDs to their canvas components */
 const GAME_COMPONENTS = {
-  'game-template': GameTemplate,
   'tower-defense': TowerDefense,
   'cheese-run': CheeseRun,
 };
