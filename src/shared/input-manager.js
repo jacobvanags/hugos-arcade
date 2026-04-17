@@ -216,6 +216,29 @@ export function createInputManager(target = window) {
     },
 
     /**
+     * Simulate a key press from UI (e.g. an on-screen touch button).
+     * Feeds directly into the same `keys` / `justPressed` state, so game code
+     * reading `isDown('ArrowLeft')` works the same whether the arrow came
+     * from a keyboard or from a D-pad button.
+     * @param {string} code
+     */
+    pressVirtualKey(code) {
+      if (!enabled) return;
+      if (!keys[code]) justPressed[code] = true;
+      keys[code] = true;
+    },
+
+    /**
+     * Release a key that was pressed via pressVirtualKey.
+     * @param {string} code
+     */
+    releaseVirtualKey(code) {
+      if (!enabled) return;
+      if (keys[code]) justReleased[code] = true;
+      keys[code] = false;
+    },
+
+    /**
      * Called at the end of each frame to reset one-shot states.
      */
     update() {

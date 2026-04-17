@@ -3,12 +3,33 @@ import { Game, manifest, achievements } from './index.js';
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import { useAchievements } from '../../context/AchievementContext.jsx';
 import { resumeAudio, playSFX, getMasterVolume, getSFXVolume, getMusicVolume } from '../../shared/audio-engine.js';
+import TouchControls from '../../components/TouchControls.jsx';
+
+// Touch control layout for Cheese Run.
+// Left thumb: D-pad (left/right). Right thumb: Jump + Shoot + Weapon switch.
+// Positions use `bottom` and `left`/`right` so they anchor to screen corners
+// regardless of orientation or aspect ratio.
+const CHEESE_RUN_TOUCH_LAYOUT = [
+  { code: 'ArrowLeft', label: '◀', ariaLabel: 'Move left',
+    position: { bottom: 24, left: 24 }, size: 72 },
+  { code: 'ArrowRight', label: '▶', ariaLabel: 'Move right',
+    position: { bottom: 24, left: 112 }, size: 72 },
+  { code: 'KeyE', label: 'Weapon', ariaLabel: 'Switch weapon',
+    position: { bottom: 112, right: 112 }, size: 64, fontSize: 13, shape: 'square' },
+  { code: 'KeyZ', label: 'Shoot', ariaLabel: 'Shoot',
+    position: { bottom: 24, right: 112 }, size: 80, fontSize: 16 },
+  { code: 'Space', label: 'Jump', ariaLabel: 'Jump',
+    position: { bottom: 24, right: 24 }, size: 80, fontSize: 16 },
+];
 
 export default function GameCanvas({ onExit }) {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
   const animFrameRef = useRef(null);
   const lastTimeRef = useRef(null);
+  // Ref pointing at the game's input manager, so TouchControls can inject
+  // virtual key presses once the game is initialized.
+  const inputRef = useRef(null);
 
   const { player, settings, submitScore, getHighScores, incrementPlayTime, incrementGamesPlayed, saveGameProgress, loadGameProgress } = usePlayer();
   const { unlock, isUnlocked, getAllAchievements, registerAchievements, unregisterAchievements } = useAchievements();
@@ -83,6 +104,8 @@ export default function GameCanvas({ onExit }) {
     const game = new Game();
     gameRef.current = game;
     game.init(canvas, arcadeAPI);
+    // Expose input manager so TouchControls can dispatch virtual key presses.
+    inputRef.current = game.input;
     incrementGamesPlayed();
 
     let playTimeAccum = 0;
@@ -159,6 +182,7 @@ export default function GameCanvas({ onExit }) {
           maxHeight: '100%',
         }}
       />
+      <TouchControls inputRef={inputRef} layout={CHEESE_RUN_TOUCH_LAYOUT} />
     </div>
   );
 }
