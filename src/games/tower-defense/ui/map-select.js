@@ -124,10 +124,15 @@ export function renderMapSelect(ctx, hoveredIndex, progress = {}) {
     baseline: 'middle',
   });
 
-  // Scroll hint
+  // Scroll hint — clarify direction so iPad users know to swipe UP/DOWN,
+  // not left/right. A kid tries horizontal swipes by default.
   const totalH = Math.ceil(ALL_MAPS.length / 2) * (CARD_H + GAP_Y) + 160;
   if (totalH > config.height) {
-    drawText(ctx, 'Scroll to see more maps', config.width / 2, 78, {
+    const TOUCH = typeof window !== 'undefined' &&
+      ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0);
+    const hint = TOUCH ? '▲  Swipe up / down for more maps  ▼'
+                       : 'Scroll to see more maps';
+    drawText(ctx, hint, config.width / 2, 78, {
       color: '#4a5568',
       font: '10px monospace',
       align: 'center',

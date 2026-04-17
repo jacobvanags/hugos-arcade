@@ -15,9 +15,22 @@ export function createInputManager(target = window) {
   const justReleased = {};
   const mouse = { x: 0, y: 0, down: false, clicked: false, rightDown: false, wheelDeltaY: 0 };
   // Touch state — mirrors into mouse so existing mouse-based logic works on iPad.
-  // `touchActive` tracks whether input is currently coming from a finger (vs. real mouse),
-  // so games can adjust UI (hide hover tooltips, show touch controls, etc.).
-  const touch = { active: false, id: null, lastY: 0 };
+  // We distinguish between TAP (short, low-movement) and DRAG (sustained movement).
+  // A tap fires `mouse.clicked` on release; a drag instead feeds `mouse.wheelDeltaY`
+  // so canvas UIs that rely on scroll-wheel (sidebar lists, map select) keep
+  // working via finger-drag — without also firing a spurious click where the
+  // drag started.
+  const touch = {
+    active: false,
+    id: null,
+    startX: 0,
+    startY: 0,
+    lastY: 0,
+    scrolling: false, // true once displacement > TAP_THRESHOLD — no click on release
+  };
+  // Max displacement (in CSS pixels) before a touch is classified as a drag/scroll.
+  // 10px matches iOS's own tap-vs-scroll heuristic closely enough for kids.
+  const TAP_THRESHOLD = 10;
   let enabled = true;
 
   function onKeyDown(e) {
@@ -96,13 +109,20 @@ export function createInputManager(target = window) {
     if (!t) return;
     touch.active = true;
     touch.id = t.identifier;
+    touch.scrolling = false;
+    touch.startX = t.clientX;
+    touch.startY = t.clientY;
+    touch.lastY = t.clientY;
     const p = pointFromTouch(t);
     mouse.x = p.x;
     mouse.y = p.y;
-    touch.lastY = t.clientY;
+    // `mouse.down` stays true through drag so hover/highlight states render,
+    // but we intentionally DO NOT set `mouse.clicked` here. Click fires on
+    // release in onTouchEnd iff the finger stayed within TAP_THRESHOLD —
+    // otherwise the tap would register immediately at touchstart even if
+    // the user meant to scroll, causing accidental tower placement / button
+    // presses every time a kid drags the sidebar.
     mouse.down = true;
-    mouse.clicked = true;
-    // Prevent iOS double-tap zoom and scroll on the canvas
     if (e.cancelable) e.preventDefault();
   }
 
@@ -113,9 +133,22 @@ export function createInputManager(target = window) {
         const p = pointFromTouch(t);
         mouse.x = p.x;
         mouse.y = p.y;
-        // Synthesize wheel delta from vertical drag so scroll-wheel UI (TD sidebar,
-        // map select) works via drag. Inverted so dragging up scrolls content up.
-        mouse.wheelDeltaY += (touch.lastY - t.clientY);
+        // Once the finger has moved enough, commit to "scrolling" for the rest
+        // of this touch. From this point on we emit wheel deltas and suppress
+        // the release-click.
+        if (!touch.scrolling) {
+          const dx = t.clientX - touch.startX;
+          const dy = t.clientY - touch.startY;
+          if (Math.hypot(dx, dy) > TAP_THRESHOLD) {
+            touch.scrolling = true;
+          }
+        }
+        if (touch.scrolling) {
+          // Vertical drag → wheel delta. Direction matches native wheel:
+          // dragging finger UP emits positive delta (content scrolls down
+          // in UI that treats wheelDeltaY > 0 as "scroll down").
+          mouse.wheelDeltaY += (touch.lastY - t.clientY);
+        }
         touch.lastY = t.clientY;
         if (e.cancelable) e.preventDefault();
         break;
@@ -127,8 +160,15 @@ export function createInputManager(target = window) {
     if (!enabled || touch.id === null) return;
     for (const t of e.changedTouches) {
       if (t.identifier === touch.id) {
+        // Fire a click only if this was a genuine tap (never crossed scroll
+        // threshold). Otherwise the user was scrolling and does NOT want a
+        // click on whatever happened to be under the finger at tap-start.
+        if (!touch.scrolling) {
+          mouse.clicked = true;
+        }
         touch.id = null;
         touch.active = false;
+        touch.scrolling = false;
         mouse.down = false;
         if (e.cancelable) e.preventDefault();
         break;

@@ -13,8 +13,10 @@ const PATH_HEIGHT = 70;
 const PATH_GAP = 4;
 const PIP_RADIUS = 3;
 const PIP_GAP = 12;
-const BUY_BTN_W = 56;
-const BUY_BTN_H = 20;
+// Buy buttons were 56×20 for mouse — too small for a finger on iPad.
+// 68×28 keeps the text readable and easily tappable.
+const BUY_BTN_W = 68;
+const BUY_BTN_H = 28;
 
 // Effect display names (short labels for upgrade effects)
 const EFFECT_LABELS = {

@@ -7,6 +7,11 @@ import { TOWER_TYPES, TOWER_CLASSES } from '../data/tower-defs.js';
 import { renderUpgradePanel, handleUpgradeClick } from './upgrade-panel.js';
 import { renderHeroSection, renderSelectedHeroInfo, handleHeroSectionClick, handleHeroInfoClick } from './hero-panel.js';
 
+// Hide 1-9 hotkey badges and "[S]"/"[T]" suffixes on touch devices, since
+// the iPad has no keyboard. Kids on touch should see clean, uncluttered buttons.
+const TOUCH = typeof window !== 'undefined' &&
+  ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0);
+
 // Compact tower icon drawing for sidebar buttons
 function drawTowerIcon(ctx, x, y, towerKey, color, affordable) {
   ctx.fillStyle = affordable ? color : 'rgba(136,146,176,0.3)';
@@ -276,8 +281,8 @@ export function renderTowerPanel(ctx, gs) {
         font: '8px monospace',
       });
 
-      // Hotkey badge (first 10 towers)
-      if (btn.globalIdx < 10) {
+      // Hotkey badge (first 10 towers) — hide on touch (no keyboard)
+      if (btn.globalIdx < 10 && !TOUCH) {
         const hkX = btn.x + BTN_W - 14;
         const hkY = btn.y + 4;
         const hkLabel = btn.globalIdx < 9 ? `${btn.globalIdx + 1}` : '0';
@@ -530,7 +535,7 @@ function renderSelectedTowerInfo(ctx, gs) {
     gs._targetBtnY = y;
     roundedRect(ctx, sb.x + 10, y, sb.w - 20, 24, 4,
       'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.08)', 1);
-    drawText(ctx, `Target: ${t.targetingMode} [T]`, sb.x + sb.w / 2, y + 12, {
+    drawText(ctx, TOUCH ? `Target: ${t.targetingMode}` : `Target: ${t.targetingMode} [T]`, sb.x + sb.w / 2, y + 12, {
       color: '#8892b0',
       font: '10px monospace',
       align: 'center',
@@ -543,14 +548,31 @@ function renderSelectedTowerInfo(ctx, gs) {
   if (!gs.noSell) {
     gs._sellBtnY = y;
     const sellValue = Math.floor(t.totalSpent * config.sellRefund);
-    roundedRect(ctx, sb.x + 10, y, sb.w - 20, 24, 4,
-      'rgba(255,68,68,0.08)', 'rgba(255,68,68,0.2)', 1);
-    drawText(ctx, `Sell ($${sellValue}) [S]`, sb.x + sb.w / 2, y + 12, {
-      color: '#ff4444',
-      font: '10px monospace',
-      align: 'center',
-      baseline: 'middle',
-    });
+    // Two-tap confirmation so a kid can't accidentally sell a tower —
+    // first tap arms the confirm window (2s), second tap within the window
+    // commits. Rendered here, gated in index.js panel-click handler.
+    const armed = gs._sellConfirmUntil &&
+                  performance.now() < gs._sellConfirmUntil &&
+                  gs._sellConfirmTower === t;
+    if (armed) {
+      roundedRect(ctx, sb.x + 10, y, sb.w - 20, 24, 4,
+        'rgba(255,68,68,0.35)', 'rgba(255,120,120,0.7)', 2);
+      drawText(ctx, `Tap again to SELL ($${sellValue})`, sb.x + sb.w / 2, y + 12, {
+        color: '#fff',
+        font: 'bold 10px monospace',
+        align: 'center',
+        baseline: 'middle',
+      });
+    } else {
+      roundedRect(ctx, sb.x + 10, y, sb.w - 20, 24, 4,
+        'rgba(255,68,68,0.08)', 'rgba(255,68,68,0.2)', 1);
+      drawText(ctx, TOUCH ? `Sell ($${sellValue})` : `Sell ($${sellValue}) [S]`, sb.x + sb.w / 2, y + 12, {
+        color: '#ff4444',
+        font: '10px monospace',
+        align: 'center',
+        baseline: 'middle',
+      });
+    }
   } else {
     gs._sellBtnY = null;
     // Show "NO SELLING" indicator

@@ -711,13 +711,28 @@ export class Game {
       } else if (panelResult.action === 'cycleTargeting' && gs.selectedTower) {
         this.towerSystem.cycleTargeting(gs.selectedTower);
       } else if (panelResult.action === 'sellTower' && gs.selectedTower) {
-        const tower = gs.selectedTower;
-        const refund = Math.floor(tower.totalSpent * config.sellRefund);
-        playSellTower();
-        emitSparkle(this.particles, tower.x, tower.y, { color: '#ffd700', count: 6 });
-        floatCash(tower.x, tower.y, refund);
-        this.towerSystem.sellTower(tower, gs);
-        gs.selectedTower = null;
+        // Two-tap confirmation — first tap arms the window, second commits.
+        // Prevents a kid on iPad from accidentally tapping Sell and losing
+        // a tower they spent effort upgrading. Confirm is scoped to the
+        // specific tower, so switching towers mid-confirm won't auto-sell.
+        const now = performance.now();
+        const armed = gs._sellConfirmUntil &&
+                      now < gs._sellConfirmUntil &&
+                      gs._sellConfirmTower === gs.selectedTower;
+        if (!armed) {
+          gs._sellConfirmUntil = now + 2000;
+          gs._sellConfirmTower = gs.selectedTower;
+        } else {
+          const tower = gs.selectedTower;
+          const refund = Math.floor(tower.totalSpent * config.sellRefund);
+          playSellTower();
+          emitSparkle(this.particles, tower.x, tower.y, { color: '#ffd700', count: 6 });
+          floatCash(tower.x, tower.y, refund);
+          this.towerSystem.sellTower(tower, gs);
+          gs.selectedTower = null;
+          gs._sellConfirmUntil = 0;
+          gs._sellConfirmTower = null;
+        }
       } else if (panelResult.action === 'upgrade' && gs.selectedTower) {
         const tower = gs.selectedTower;
         const cashBefore = gs.cash;

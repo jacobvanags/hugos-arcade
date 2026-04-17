@@ -4,8 +4,16 @@
 import { config } from '../config.js';
 import { drawText, roundedRect } from '../../../shared/canvas-utils.js';
 
+// Button sizing bumped from the original mouse-era dimensions so thumbs
+// (especially a 6-year-old's) can hit them reliably on iPad.
+const BTN_Y = 4;
+const BTN_H = 32;
 const RESET_X = 580;
-const RESET_W = 48;
+const RESET_W = 56;
+const SPEED_BTN_W = 36;
+const SPEED_BTN_GAP = 42;
+const SEND_EARLY_X = 220;
+const SEND_EARLY_W = 88;
 
 export function renderHUD(ctx, gs) {
   const hud = config.hudBar;
@@ -40,12 +48,11 @@ export function renderHUD(ctx, gs) {
 
   // Send Early button (during prep) — left of wave counter
   if (gs.wavePhase === 'prep') {
-    const btnX = 220;
-    const btnW = 84;
-    roundedRect(ctx, btnX, 8, btnW, 24, 4, 'rgba(233,69,96,0.15)', 'rgba(233,69,96,0.3)', 1);
-    drawText(ctx, 'Send [SPC]', btnX + btnW / 2, y, {
+    roundedRect(ctx, SEND_EARLY_X, BTN_Y, SEND_EARLY_W, BTN_H, 4,
+      'rgba(233,69,96,0.15)', 'rgba(233,69,96,0.3)', 1);
+    drawText(ctx, 'Send ▶', SEND_EARLY_X + SEND_EARLY_W / 2, y, {
       color: '#e94560',
-      font: 'bold 10px monospace',
+      font: 'bold 12px monospace',
       align: 'center',
       baseline: 'middle',
     });
@@ -68,28 +75,31 @@ export function renderHUD(ctx, gs) {
   ctx.restore();
 
   // Reset button — right side, before speed controls
-  roundedRect(ctx, RESET_X, 8, RESET_W, 24, 4, 'rgba(255,170,0,0.1)', 'rgba(255,170,0,0.25)', 1);
-  drawText(ctx, '\u21BB R', RESET_X + RESET_W / 2, y, {
+  roundedRect(ctx, RESET_X, BTN_Y, RESET_W, BTN_H, 4, 'rgba(255,170,0,0.1)', 'rgba(255,170,0,0.25)', 1);
+  drawText(ctx, '\u21BB Reset', RESET_X + RESET_W / 2, y, {
     color: '#ffaa00',
-    font: 'bold 10px monospace',
+    font: 'bold 11px monospace',
     align: 'center',
     baseline: 'middle',
   });
 
   // Speed controls — far right
   const speeds = [1, 2, 3];
-  const speedX = hud.w - 120;
+  // Lay out from the right so the rightmost button hugs the HUD edge with
+  // a 12px margin regardless of button width changes.
+  const speedEndX = hud.w - 12;
+  const speedStartX = speedEndX - (speeds.length * SPEED_BTN_W + (speeds.length - 1) * (SPEED_BTN_GAP - SPEED_BTN_W));
   for (let i = 0; i < speeds.length; i++) {
-    const bx = speedX + i * 34;
+    const bx = speedStartX + i * SPEED_BTN_GAP;
     const active = gs.speedMultiplier === speeds[i];
-    roundedRect(ctx, bx, 8, 28, 24, 4,
+    roundedRect(ctx, bx, BTN_Y, SPEED_BTN_W, BTN_H, 4,
       active ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.04)',
       active ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)',
       1
     );
-    drawText(ctx, `${speeds[i]}x`, bx + 14, y, {
+    drawText(ctx, `${speeds[i]}x`, bx + SPEED_BTN_W / 2, y, {
       color: active ? '#00d4ff' : '#8892b0',
-      font: 'bold 11px monospace',
+      font: 'bold 12px monospace',
       align: 'center',
       baseline: 'middle',
     });
@@ -102,25 +112,26 @@ export function renderHUD(ctx, gs) {
 export function handleHUDClick(x, y, gs) {
   if (y > config.hudBar.h) return false;
 
-  // Speed buttons
-  const speedX = config.hudBar.w - 120;
+  // Speed buttons — hit-test must match the render layout exactly
   const speeds = [1, 2, 3];
+  const speedEndX = config.hudBar.w - 12;
+  const speedStartX = speedEndX - (speeds.length * SPEED_BTN_W + (speeds.length - 1) * (SPEED_BTN_GAP - SPEED_BTN_W));
   for (let i = 0; i < speeds.length; i++) {
-    const bx = speedX + i * 34;
-    if (x >= bx && x <= bx + 28 && y >= 8 && y <= 32) {
+    const bx = speedStartX + i * SPEED_BTN_GAP;
+    if (x >= bx && x <= bx + SPEED_BTN_W && y >= BTN_Y && y <= BTN_Y + BTN_H) {
       gs.speedMultiplier = speeds[i];
       return true;
     }
   }
 
   // Reset button
-  if (x >= RESET_X && x <= RESET_X + RESET_W && y >= 8 && y <= 32) {
+  if (x >= RESET_X && x <= RESET_X + RESET_W && y >= BTN_Y && y <= BTN_Y + BTN_H) {
     return 'reset';
   }
 
   // Send Early button
   if (gs.wavePhase === 'prep') {
-    if (x >= 220 && x <= 304 && y >= 8 && y <= 32) {
+    if (x >= SEND_EARLY_X && x <= SEND_EARLY_X + SEND_EARLY_W && y >= BTN_Y && y <= BTN_Y + BTN_H) {
       return 'sendEarly';
     }
   }
