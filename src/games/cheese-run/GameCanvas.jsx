@@ -10,6 +10,7 @@ import TouchControls from '../../components/TouchControls.jsx';
 // Positions use `bottom` and `left`/`right` so they anchor to screen corners
 // regardless of orientation or aspect ratio.
 const CHEESE_RUN_TOUCH_LAYOUT = [
+  // Movement + actions (bottom of screen)
   { code: 'ArrowLeft', label: '◀', ariaLabel: 'Move left',
     position: { bottom: 24, left: 24 }, size: 72 },
   { code: 'ArrowRight', label: '▶', ariaLabel: 'Move right',
@@ -18,8 +19,15 @@ const CHEESE_RUN_TOUCH_LAYOUT = [
     position: { bottom: 112, right: 112 }, size: 64, fontSize: 13, shape: 'square' },
   { code: 'KeyZ', label: 'Shoot', ariaLabel: 'Shoot',
     position: { bottom: 24, right: 112 }, size: 80, fontSize: 16 },
-  { code: 'Space', label: 'Jump', ariaLabel: 'Jump',
+  // Jump also injects Space, which the game treats as Enter on menu screens —
+  // so tapping Jump at "Press ENTER to play" starts the level.
+  { code: 'Space', label: 'Jump', ariaLabel: 'Jump / Confirm',
     position: { bottom: 24, right: 24 }, size: 80, fontSize: 16 },
+  // Menu controls (top of screen, away from action buttons)
+  { code: 'KeyP', label: '⏸', ariaLabel: 'Pause',
+    position: { top: 16, right: 88 }, size: 56, fontSize: 22, shape: 'square' },
+  { code: 'Escape', label: '✕', ariaLabel: 'Back / Menu',
+    position: { top: 16, right: 20 }, size: 56, fontSize: 22, shape: 'square' },
 ];
 
 export default function GameCanvas({ onExit }) {

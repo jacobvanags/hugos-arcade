@@ -2,6 +2,11 @@ import { config } from '../config.js';
 import { drawText } from '../../../shared/canvas-utils.js';
 import { getCurrentWeapon } from '../systems/player-system.js';
 
+// Touch devices see different menu prompts that match the on-screen buttons
+// (Jump instead of Enter, ✕ instead of Esc, ⏸ instead of P).
+const TOUCH = typeof window !== 'undefined' &&
+  ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0);
+
 /**
  * Renders the heads-up display (health, score, level info, weapon).
  */
@@ -168,7 +173,7 @@ export function renderLevelComplete(ctx, score, levelName, totalTime, weaponUnlo
   }
 
   ctx.globalAlpha = 0.5 + Math.sin(totalTime * 3) * 0.3;
-  drawText(ctx, 'Press ENTER to continue', w / 2, h / 2 + (weaponUnlock ? 110 : 70), {
+  drawText(ctx, TOUCH ? 'Tap JUMP to continue' : 'Press ENTER to continue', w / 2, h / 2 + (weaponUnlock ? 110 : 70), {
     color: '#8892b0',
     font: '14px monospace',
     align: 'center',
@@ -200,7 +205,7 @@ export function renderGameOver(ctx, score, totalTime) {
   });
 
   ctx.globalAlpha = 0.5 + Math.sin(totalTime * 3) * 0.3;
-  drawText(ctx, 'Press ENTER to retry  |  ESC to quit', w / 2, h / 2 + 50, {
+  drawText(ctx, TOUCH ? 'Tap JUMP to retry  |  ✕ to quit' : 'Press ENTER to retry  |  ESC to quit', w / 2, h / 2 + 50, {
     color: '#8892b0',
     font: '13px monospace',
     align: 'center',
@@ -310,7 +315,7 @@ export function renderTitleScreen(ctx, unlockedLevels, selectedLevel, worlds, to
   });
 
   ctx.globalAlpha = 0.5 + Math.sin(totalTime * 3) * 0.3;
-  drawText(ctx, 'Press ENTER to start', w / 2, h - 30, {
+  drawText(ctx, TOUCH ? 'Tap JUMP to start' : 'Press ENTER to start', w / 2, h - 30, {
     color: '#FFD700',
     font: '14px monospace',
     align: 'center',
@@ -335,7 +340,7 @@ export function renderPause(ctx) {
     baseline: 'middle',
   });
 
-  drawText(ctx, 'Press P to resume  |  ESC to quit', w / 2, h / 2 + 40, {
+  drawText(ctx, TOUCH ? 'Tap ⏸ to resume  |  ✕ to quit' : 'Press P to resume  |  ESC to quit', w / 2, h / 2 + 40, {
     color: '#888',
     font: '14px monospace',
     align: 'center',

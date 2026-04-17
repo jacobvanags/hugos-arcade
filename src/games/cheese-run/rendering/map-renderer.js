@@ -5,6 +5,10 @@ import { drawText } from '../../../shared/canvas-utils.js';
 const W = 800;
 const H = 600;
 
+// Show touch-friendly prompt text on touchscreens.
+const TOUCH = typeof window !== 'undefined' &&
+  ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0);
+
 /**
  * Renders the full world map (level select).
  */
@@ -105,7 +109,7 @@ export function renderWorldMap(ctx, state, totalTime) {
 
     if (accessible) {
       ctx.globalAlpha = 0.5 + Math.sin(totalTime * 3) * 0.3;
-      drawText(ctx, 'Press ENTER to play', W / 2, H - 16, {
+      drawText(ctx, TOUCH ? 'Tap JUMP to play' : 'Press ENTER to play', W / 2, H - 16, {
         color: '#FFD700',
         font: '12px monospace',
         align: 'center',
