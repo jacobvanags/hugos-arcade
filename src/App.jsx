@@ -4,6 +4,7 @@ import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { AchievementProvider } from './context/AchievementContext';
 import Sidebar from './components/Sidebar';
 import AchievementToast from './components/AchievementToast';
+import RotatePrompt from './components/RotatePrompt';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Achievements from './pages/Achievements';
@@ -81,6 +82,9 @@ export default function App() {
         <BrowserRouter>
           <ArcadeShell />
           <AchievementToast />
+          {/* Mounted at the app root so it overlays everything — including
+              game canvases — on any touch device in portrait orientation. */}
+          <RotatePrompt />
         </BrowserRouter>
       </AchievementProvider>
     </PlayerProvider>
