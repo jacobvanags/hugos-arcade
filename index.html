@@ -2,11 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- iOS "Add to Home Screen" as fullscreen PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hugo's Arcade" />
+    <meta name="theme-color" content="#0a0a0f" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Hugo's Arcade</title>
     <style>
       /* Prevent FOUC */
-      body { background: #0a0a0f; }
+      body { background: #0a0a0f; margin: 0; }
+      /* Disable iOS touch callouts, text selection, and tap highlight for an app-like feel */
+      html, body, #root {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
+      }
+      /* Allow selection inside inputs/textareas if ever added */
+      input, textarea { -webkit-user-select: text; user-select: text; }
     </style>
   </head>
   <body>
