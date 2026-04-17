@@ -230,11 +230,13 @@ export function createInputManager(target = window) {
 
     /**
      * Release a key that was pressed via pressVirtualKey.
+     * NOTE: always releases regardless of `enabled` — otherwise a key pressed
+     * before the game was paused/disabled would stay "stuck down" in the
+     * keys map forever.
      * @param {string} code
      */
     releaseVirtualKey(code) {
-      if (!enabled) return;
-      if (keys[code]) justReleased[code] = true;
+      if (keys[code] && enabled) justReleased[code] = true;
       keys[code] = false;
     },
 

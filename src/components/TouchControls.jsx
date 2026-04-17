@@ -25,18 +25,38 @@ function detectTouch() {
  */
 export default function TouchControls({ inputRef, layout }) {
   const [isTouch] = useState(detectTouch);
+  // Tracks codes that this component has currently pressed down. Used as a
+  // safety net to release everything on unmount, and to avoid double-releases.
   const heldRef = useRef(new Set());
 
-  // Safety: release any held virtual keys when the component unmounts
-  // so keys don't get "stuck down" if the user navigates away mid-press.
+  // Global safety net: if any pointer is lifted or cancelled anywhere in the
+  // document, release ALL keys that don't still have an active pointer on them.
+  // This catches the case where setPointerCapture falls through, the button
+  // unmounts mid-press, or iOS decides to eat a pointerup event.
+  //
+  // Each button tracks its own pointerId in its closure. When the window sees
+  // a pointerup, each button checks if it's the one that just lifted and
+  // fires its own cleanup. We only need the document listener as a fallback
+  // to force-release everything on `pointercancel` at the window level.
   useEffect(() => {
-    return () => {
+    const forceReleaseAll = () => {
       const im = inputRef.current;
       if (!im) return;
       for (const code of heldRef.current) {
         im.releaseVirtualKey(code);
       }
       heldRef.current.clear();
+    };
+    // `pointercancel` on the window means the OS or browser yanked the gesture
+    // away (phone call, app switcher, etc.). Always fully release.
+    window.addEventListener('pointercancel', forceReleaseAll);
+    // Visibility change = tab backgrounded. Also a good time to release.
+    const onVis = () => { if (document.hidden) forceReleaseAll(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      forceReleaseAll();
+      window.removeEventListener('pointercancel', forceReleaseAll);
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, [inputRef]);
 
@@ -79,29 +99,64 @@ export default function TouchControls({ inputRef, layout }) {
 
 function TouchButton({ def, onPress, onRelease }) {
   const [active, setActive] = useState(false);
+  // Ref mirror of `active` so event handlers can check current state without
+  // stale-closure bugs (critical for onPointerLeave / window listeners).
+  const activeRef = useRef(false);
+  // Pointer currently pressing this button, so we only respond to matching
+  // pointer events (protects against multi-touch cross-talk).
+  const pointerIdRef = useRef(null);
 
-  const handleDown = (e) => {
-    e.preventDefault();
+  const doPress = (e) => {
+    // Ignore if another finger is already on this button.
+    if (pointerIdRef.current !== null) return;
+    pointerIdRef.current = e.pointerId;
+    // Capture the pointer on this element so pointerup/pointermove keep
+    // firing here even if the finger drifts outside the button bounds.
+    // This is the single most important fix for stuck-key bugs on touch.
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (_) {
+      // Older browsers without pointer capture — fall through.
+    }
+    activeRef.current = true;
     setActive(true);
     onPress();
+    e.preventDefault();
   };
 
-  const handleUp = (e) => {
-    e.preventDefault();
+  const doRelease = (e) => {
+    // Only release for the pointer that originally pressed us.
+    if (pointerIdRef.current !== e.pointerId) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (_) { /* ignore */ }
+    pointerIdRef.current = null;
+    activeRef.current = false;
     setActive(false);
     onRelease();
+    e.preventDefault();
   };
 
-  // `touch-action: none` disables iOS scroll / double-tap zoom on the button.
-  // We attach both pointer and touch events for maximum browser compatibility.
+  // Belt-and-suspenders: if the component unmounts while held, release.
+  // (Primary release path is onPointerUp / onPointerCancel.)
+  useEffect(() => () => {
+    if (activeRef.current) {
+      activeRef.current = false;
+      onRelease();
+    }
+  }, [onRelease]);
+
   return (
     <button
       type="button"
       aria-label={def.ariaLabel || def.label}
-      onPointerDown={handleDown}
-      onPointerUp={handleUp}
-      onPointerCancel={handleUp}
-      onPointerLeave={(e) => { if (active) handleUp(e); }}
+      onPointerDown={doPress}
+      onPointerUp={doRelease}
+      onPointerCancel={doRelease}
+      // With setPointerCapture, onPointerLeave won't normally fire while the
+      // finger is tracked — but as a last-resort fallback for browsers without
+      // pointer capture, we use the ref (not stale state) to check if held.
+      onPointerLeave={(e) => { if (activeRef.current) doRelease(e); }}
       style={{
         position: 'absolute',
         ...def.position,
