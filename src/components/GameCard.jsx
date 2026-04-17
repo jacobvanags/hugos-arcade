@@ -96,8 +96,13 @@ export default function GameCard({ game, onPlay }) {
         </div>
       </div>
 
-      {/* Play button (below card, always visible for playable games) */}
-      {!isComingSoon && !hovered && (
+      {/* Bottom Play button — always rendered for playable games.
+          Previously it was hidden on hover while the thumbnail overlay took
+          over, but that changed the card's height and caused mouseenter/leave
+          to flicker when the cursor hovered the button region. Keeping this
+          button permanent makes the overlay a bonus hover target without
+          any layout shift. */}
+      {!isComingSoon && (
         <button
           className="btn btn-primary"
           style={styles.playButton}
