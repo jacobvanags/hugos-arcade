@@ -14,6 +14,10 @@ export function createInputManager(target = window) {
   const justPressed = {};
   const justReleased = {};
   const mouse = { x: 0, y: 0, down: false, clicked: false, rightDown: false, wheelDeltaY: 0 };
+  // Touch state — mirrors into mouse so existing mouse-based logic works on iPad.
+  // `touchActive` tracks whether input is currently coming from a finger (vs. real mouse),
+  // so games can adjust UI (hide hover tooltips, show touch controls, etc.).
+  const touch = { active: false, id: null, lastY: 0 };
   let enabled = true;
 
   function onKeyDown(e) {
@@ -73,6 +77,65 @@ export function createInputManager(target = window) {
     e.preventDefault();
   }
 
+  // --- Touch → Mouse synthesis ---
+  // On iPad, we map the first active touch to the mouse API so existing games
+  // (which all read `mouse.x/y/down/clicked`) work without per-game changes.
+  // Multi-touch isn't synthesized — second fingers are ignored here. On-screen
+  // controls (D-pad, jump button) attach their own listeners outside this manager.
+
+  function pointFromTouch(t) {
+    if (target === window) return { x: t.clientX, y: t.clientY };
+    const rect = target.getBoundingClientRect();
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  }
+
+  function onTouchStart(e) {
+    if (!enabled) return;
+    if (touch.id !== null) return; // already tracking a finger
+    const t = e.changedTouches[0];
+    if (!t) return;
+    touch.active = true;
+    touch.id = t.identifier;
+    const p = pointFromTouch(t);
+    mouse.x = p.x;
+    mouse.y = p.y;
+    touch.lastY = t.clientY;
+    mouse.down = true;
+    mouse.clicked = true;
+    // Prevent iOS double-tap zoom and scroll on the canvas
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function onTouchMove(e) {
+    if (!enabled || touch.id === null) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier === touch.id) {
+        const p = pointFromTouch(t);
+        mouse.x = p.x;
+        mouse.y = p.y;
+        // Synthesize wheel delta from vertical drag so scroll-wheel UI (TD sidebar,
+        // map select) works via drag. Inverted so dragging up scrolls content up.
+        mouse.wheelDeltaY += (touch.lastY - t.clientY);
+        touch.lastY = t.clientY;
+        if (e.cancelable) e.preventDefault();
+        break;
+      }
+    }
+  }
+
+  function onTouchEnd(e) {
+    if (!enabled || touch.id === null) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier === touch.id) {
+        touch.id = null;
+        touch.active = false;
+        mouse.down = false;
+        if (e.cancelable) e.preventDefault();
+        break;
+      }
+    }
+  }
+
   /** Clears all tracked key/mouse state so nothing is "stuck" */
   function clearAllState() {
     for (const code in keys) delete keys[code];
@@ -82,6 +145,8 @@ export function createInputManager(target = window) {
     mouse.clicked = false;
     mouse.rightDown = false;
     mouse.wheelDeltaY = 0;
+    touch.id = null;
+    touch.active = false;
   }
 
   /** When canvas loses focus, release all keys so nothing is stuck */
@@ -99,6 +164,10 @@ export function createInputManager(target = window) {
   listenTarget.addEventListener('contextmenu', onContextMenu);
   listenTarget.addEventListener('wheel', onWheel, { passive: false });
   listenTarget.addEventListener('blur', onBlur);
+  listenTarget.addEventListener('touchstart', onTouchStart, { passive: false });
+  listenTarget.addEventListener('touchmove', onTouchMove, { passive: false });
+  listenTarget.addEventListener('touchend', onTouchEnd, { passive: false });
+  listenTarget.addEventListener('touchcancel', onTouchEnd, { passive: false });
 
   return {
     /**
@@ -138,6 +207,15 @@ export function createInputManager(target = window) {
     },
 
     /**
+     * Returns true when input is currently coming from a touch device.
+     * Games use this to show on-screen controls and hide hover tooltips.
+     * @returns {boolean}
+     */
+    isTouchActive() {
+      return touch.active;
+    },
+
+    /**
      * Called at the end of each frame to reset one-shot states.
      */
     update() {
@@ -174,6 +252,10 @@ export function createInputManager(target = window) {
       listenTarget.removeEventListener('contextmenu', onContextMenu);
       listenTarget.removeEventListener('wheel', onWheel);
       listenTarget.removeEventListener('blur', onBlur);
+      listenTarget.removeEventListener('touchstart', onTouchStart);
+      listenTarget.removeEventListener('touchmove', onTouchMove);
+      listenTarget.removeEventListener('touchend', onTouchEnd);
+      listenTarget.removeEventListener('touchcancel', onTouchEnd);
     },
   };
 }
