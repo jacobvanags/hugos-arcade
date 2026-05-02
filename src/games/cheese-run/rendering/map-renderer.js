@@ -5,6 +5,25 @@ import { drawText } from '../../../shared/canvas-utils.js';
 const W = 800;
 const H = 600;
 
+// Difficulty selector geometry (top-right of the map screen).
+// Centralized so render and hit-testing stay aligned.
+const DIFF_KEYS = ['easy', 'medium', 'hard'];
+const DIFF_BTN_W = 64;
+const DIFF_BTN_H = 22;
+const DIFF_BTN_GAP = 4;
+const DIFF_TOTAL_W = DIFF_BTN_W * DIFF_KEYS.length + DIFF_BTN_GAP * (DIFF_KEYS.length - 1);
+const DIFF_X = W - DIFF_TOTAL_W - 14;
+const DIFF_Y = 14;
+
+function diffButtonRect(idx) {
+  return {
+    x: DIFF_X + idx * (DIFF_BTN_W + DIFF_BTN_GAP),
+    y: DIFF_Y,
+    w: DIFF_BTN_W,
+    h: DIFF_BTN_H,
+  };
+}
+
 // Show touch-friendly prompt text on touchscreens.
 const TOUCH = typeof window !== 'undefined' &&
   ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0);
@@ -13,7 +32,7 @@ const TOUCH = typeof window !== 'undefined' &&
  * Renders the full world map (level select).
  */
 export function renderWorldMap(ctx, state, totalTime) {
-  const { selectedNode, unlockedLevels, secretLevelsUnlocked, mouseMapX, mouseMapY } = state;
+  const { selectedNode, unlockedLevels, secretLevelsUnlocked, mouseMapX, mouseMapY, difficulty } = state;
 
   // ─── Background ───
   const grad = ctx.createLinearGradient(0, 0, 0, H);
@@ -86,6 +105,9 @@ export function renderWorldMap(ctx, state, totalTime) {
     const selected = node.id === selectedNode;
     renderNode(ctx, node, accessible, selected, totalTime);
   }
+
+  // ─── Difficulty selector ───
+  renderDifficultySelector(ctx, difficulty || config.defaultDifficulty);
 
   // ─── Mouse character on selected node ───
   renderMapMouse(ctx, mouseMapX, mouseMapY, totalTime);
@@ -464,6 +486,53 @@ function renderMapMouse(ctx, x, y, t) {
   ctx.beginPath();
   ctx.ellipse(x, y - 6, 6, 2, 0, 0, Math.PI * 2);
   ctx.fill();
+}
+
+// ─── Difficulty selector ────────────────────────────────────────
+
+function renderDifficultySelector(ctx, currentDiff) {
+  // Label above the buttons
+  drawText(ctx, 'DIFFICULTY', DIFF_X + DIFF_TOTAL_W / 2, DIFF_Y - 2, {
+    color: '#8892b0',
+    font: '9px monospace',
+    align: 'center',
+    baseline: 'bottom',
+  });
+
+  for (let i = 0; i < DIFF_KEYS.length; i++) {
+    const key = DIFF_KEYS[i];
+    const def = config.difficulties[key];
+    const r = diffButtonRect(i);
+    const active = key === currentDiff;
+
+    ctx.fillStyle = active ? def.color : 'rgba(20,20,40,0.85)';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+
+    ctx.strokeStyle = active ? '#FFF' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = active ? 2 : 1;
+    ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+
+    drawText(ctx, def.label, r.x + r.w / 2, r.y + r.h / 2 + 1, {
+      color: active ? '#000' : def.color,
+      font: 'bold 11px monospace',
+      align: 'center',
+      baseline: 'middle',
+    });
+  }
+}
+
+/**
+ * Returns the difficulty key whose button contains (mx, my), or null.
+ * Used by the game to route map-screen clicks to difficulty changes.
+ */
+export function hitTestDifficultyButton(mx, my) {
+  for (let i = 0; i < DIFF_KEYS.length; i++) {
+    const r = diffButtonRect(i);
+    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+      return DIFF_KEYS[i];
+    }
+  }
+  return null;
 }
 
 // ─── Visibility / accessibility checks ──────────────────────────

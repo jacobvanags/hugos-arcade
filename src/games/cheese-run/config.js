@@ -48,6 +48,14 @@ export const config = {
     5: { hpMult: 2.0,  shootMult: 0.7,  speedMult: 1.3,  name: 'Warehouse Warden' },
   },
 
+  /** Difficulty modes — applied on top of bossScaling. */
+  difficulties: {
+    easy:   { label: 'EASY',   color: '#7BC96A', bossHpMult: 0.5 },
+    medium: { label: 'MEDIUM', color: '#FFD700', bossHpMult: 1.0 },
+    hard:   { label: 'HARD',   color: '#FF6464', bossHpMult: 1.5 },
+  },
+  defaultDifficulty: 'easy',
+
   /** Weapon definitions */
   weapons: {
     pistol: {

@@ -14,7 +14,7 @@ import { renderEnemy } from './rendering/enemy-renderer.js';
 import { renderLevel, renderPickups, renderGoal, renderSecretObjects } from './rendering/level-renderer.js';
 import { renderHUD, renderLevelComplete, renderGameOver, renderPause } from './rendering/hud-renderer.js';
 import { renderProjectiles, renderFloatingTexts, updateFloatingTexts, addFloatingText } from './rendering/effects-renderer.js';
-import { renderWorldMap, isNodeAccessible, isNodeVisible } from './rendering/map-renderer.js';
+import { renderWorldMap, isNodeAccessible, isNodeVisible, hitTestDifficultyButton } from './rendering/map-renderer.js';
 import { renderTunnel, renderSecretFoundOverlay } from './rendering/tunnel-renderer.js';
 
 export const manifest = {
@@ -81,6 +81,9 @@ export class Game {
     // Stats
     this.totalScore = 0;
     this.totalCatsDefeated = 0;
+
+    // Difficulty (easy | medium | hard)
+    this.difficulty = config.defaultDifficulty;
   }
 
   init(canvas, arcadeAPI) {
@@ -100,6 +103,9 @@ export class Game {
       this.totalScore = saved.totalScore || 0;
       this.unlockedWeapons = saved.unlockedWeapons || ['pistol'];
       this.secretLevelsUnlocked = saved.secretLevelsUnlocked || [];
+      if (saved.difficulty && config.difficulties[saved.difficulty]) {
+        this.difficulty = saved.difficulty;
+      }
     }
   }
 
@@ -142,9 +148,11 @@ export class Game {
         if (enemy) {
           if (enemy.type === 'boss') {
             const scaling = config.bossScaling[level.world];
+            const diffMod = config.difficulties[this.difficulty] || config.difficulties[config.defaultDifficulty];
             if (scaling) {
-              enemy.currentHP = Math.round(enemy.hp * scaling.hpMult);
-              enemy.hp = enemy.currentHP;
+              const hp = Math.max(1, Math.round(enemy.hp * scaling.hpMult * diffMod.bossHpMult));
+              enemy.currentHP = hp;
+              enemy.hp = hp;
               enemy.shootInterval = enemy.shootInterval * scaling.shootMult;
               enemy.bulletSpeed = enemy.bulletSpeed * scaling.speedMult;
               enemy.bossName = scaling.name;
@@ -251,9 +259,15 @@ export class Game {
       this.mouseMapY += (target.y - this.mouseMapY) * Math.min(1, dt * 8);
     }
 
-    // Click-to-select node
+    // Click-to-select node (or difficulty button)
     const mouse = this.input.getMouse();
     if (mouse.clicked) {
+      const diffHit = hitTestDifficultyButton(mouse.x, mouse.y);
+      if (diffHit && diffHit !== this.difficulty) {
+        this.setDifficulty(diffHit);
+        return;
+      }
+      if (diffHit) return; // clicked the active button — consume click
       for (const node of mapNodes) {
         if (!isNodeVisible(node, this.unlockedLevels, this.secretLevelsUnlocked)) continue;
         const dx = mouse.x - node.x;
@@ -628,6 +642,13 @@ export class Game {
     }
   }
 
+  setDifficulty(diff) {
+    if (!config.difficulties[diff]) return;
+    this.difficulty = diff;
+    this.saveProgress();
+    this.api.audio.playSFX(520, 0.06, 'square');
+  }
+
   saveProgress() {
     this.api.progress.save('progress', {
       unlockedLevels: this.unlockedLevels,
@@ -635,6 +656,7 @@ export class Game {
       totalScore: this.totalScore,
       unlockedWeapons: this.unlockedWeapons,
       secretLevelsUnlocked: this.secretLevelsUnlocked,
+      difficulty: this.difficulty,
     });
   }
 
@@ -651,6 +673,7 @@ export class Game {
           secretLevelsUnlocked: this.secretLevelsUnlocked,
           mouseMapX: this.mouseMapX,
           mouseMapY: this.mouseMapY,
+          difficulty: this.difficulty,
         }, this.totalTime);
         break;
       case 'tunnel':
@@ -755,6 +778,7 @@ export class Game {
       selectedNode: this.selectedNode,
       unlockedWeapons: this.unlockedWeapons,
       secretLevelsUnlocked: this.secretLevelsUnlocked,
+      difficulty: this.difficulty,
     };
   }
 
@@ -766,6 +790,9 @@ export class Game {
       this.selectedNode = state.selectedNode || 0;
       this.unlockedWeapons = state.unlockedWeapons || ['pistol'];
       this.secretLevelsUnlocked = state.secretLevelsUnlocked || [];
+      if (state.difficulty && config.difficulties[state.difficulty]) {
+        this.difficulty = state.difficulty;
+      }
     }
   }
 }
